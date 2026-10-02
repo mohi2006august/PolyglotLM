@@ -105,6 +105,22 @@ class DistillConfig(BaseModel):
     topics: list[str] = Field(default_factory=lambda: list(DEFAULT_TOPICS))
 
 
+class EmbedConfig(BaseModel):
+    """FR-08 multilingual sentence embeddings distilled from an English teacher."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    # `base`: mean-pooled states of the base LLM on English; otherwise a sentence-transformers id.
+    teacher: str = "base"
+    parallel_dir: str | None = None  # extra <dir>/<lang>.tsv files with `english<TAB>target`
+    max_steps: int = Field(default=2000, ge=1)
+    batch_size: int = Field(default=32, ge=1)
+    lr: float = Field(default=2e-4, gt=0.0)
+    max_length: int = Field(default=128, ge=8)
+    heldout_fraction: float = Field(default=0.1, gt=0.0, lt=0.5)
+    eval_every: int = Field(default=200, ge=1)
+
+
 class TrainingRecipe(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -131,6 +147,7 @@ class TrainingRecipe(BaseModel):
     cpt: StageConfig = Field(default_factory=StageConfig)
     sft: StageConfig = Field(default_factory=lambda: StageConfig(max_steps=2_000, lr=5e-5))
     distill: DistillConfig = Field(default_factory=DistillConfig)
+    embed: EmbedConfig = Field(default_factory=EmbedConfig)
 
     @model_validator(mode="after")
     def _consistent(self) -> TrainingRecipe:
@@ -222,6 +239,10 @@ class Paths:
 
     def eval(self, name: str) -> Path:
         return self.workdir / "eval" / f"{name}.json"
+
+    @property
+    def embedder(self) -> Path:
+        return self.workdir / "embed"
 
     @property
     def report(self) -> Path:
