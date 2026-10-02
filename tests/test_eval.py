@@ -12,7 +12,12 @@ from polyglotlm.eval.english_regression import compare
 from polyglotlm.eval.harness import checkpoints, english_monitor, evaluate_checkpoint
 from polyglotlm.eval.report import collect, render_html, render_model_card, write_report
 from polyglotlm.eval.tasks import MCItem, load_items
-from polyglotlm.eval.tasks.scoring import normalise_answer, token_f1
+from polyglotlm.eval.tasks.scoring import (
+    REPLACEMENT_CHAR,
+    drop_partial_char,
+    normalise_answer,
+    token_f1,
+)
 from polyglotlm.tokenizer import load_tokenizer
 from polyglotlm.tokenizer.fertility import fertility_report, save_report
 
@@ -68,6 +73,12 @@ def test_token_f1_works_across_scripts():
     assert 0 < token_f1("அரிசி விலை உயர்ந்தது", "அரிசி விலை") < 1
     assert token_f1("", "x") == 0.0
     assert normalise_answer("Hello, WORLD") == ["hello", "world"]
+
+
+def test_truncated_generation_drops_only_the_trailing_partial_character():
+    assert drop_partial_char("ہے" + REPLACEMENT_CHAR) == "ہے"
+    inner = "a" + REPLACEMENT_CHAR + "b"
+    assert drop_partial_char(inner) == inner
 
 
 def test_ticks():

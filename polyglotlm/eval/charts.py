@@ -123,7 +123,11 @@ def grouped_bars(
 
 
 def line_chart(series: list[Series], title_id: str, desc_id: str, log_y: bool = True) -> str:
-    """Multi-series line chart with one y-axis (log scale by default, for perplexity)."""
+    """Multi-series line chart with one y-axis.
+
+    Log scale by default (perplexity spans orders of magnitude early in training), falling back
+    to linear when the values cover less than a 10x range.
+    """
     left, right, top, bottom, height = 56, 16, 12, 28, 260
     xs = [x for s in series for x, _ in s.points]
     ys = [y for s in series for _, y in s.points if y > 0]
@@ -131,6 +135,7 @@ def line_chart(series: list[Series], title_id: str, desc_id: str, log_y: bool = 
         return ""
     x_lo, x_hi = min(xs), max(xs) or 1.0
     y_lo, y_hi = min(ys), max(ys)
+    log_y = log_y and y_hi / y_lo >= 10  # under one decade a log axis gets a single tick
     transform = math.log10 if log_y else (lambda v: v)
     t_lo, t_hi = transform(y_lo * 0.9), transform(y_hi * 1.1)
 

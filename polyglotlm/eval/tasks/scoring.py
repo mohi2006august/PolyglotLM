@@ -53,7 +53,20 @@ def greedy_continuation(model: Any, tokenizer: Any, text: str, max_new_tokens: i
         pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id,
         eos_token_id=tokenizer.eos_token_id,
     )
-    return tokenizer.decode(output[0, len(ids) :], skip_special_tokens=True).strip()
+    text = tokenizer.decode(output[0, len(ids) :], skip_special_tokens=True)
+    return drop_partial_char(text).strip()
+
+
+REPLACEMENT_CHAR = chr(0xFFFD)
+
+
+def drop_partial_char(text: str) -> str:
+    """Remove the U+FFFD a byte-level decode leaves when generation stops mid-character.
+
+    Indic and Urdu characters span several byte tokens, so `max_new_tokens` can cut one in half.
+    Only trailing replacement characters are dropped; one inside the text is a real error.
+    """
+    return text.rstrip(REPLACEMENT_CHAR)
 
 
 _PUNCT = re.compile(r"[\W_]+", re.UNICODE)
