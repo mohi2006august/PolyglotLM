@@ -12,6 +12,8 @@ from polyglotlm.config import TrainingRecipe, load_recipe, parse_langs
 from polyglotlm.logs import configure_logging
 
 app = typer.Typer(no_args_is_help=True, add_completion=False, help="PolyglotLM toolkit.")
+data_app = typer.Typer(no_args_is_help=True, help="Corpus building (FR-04).")
+app.add_typer(data_app, name="data")
 
 RecipeOpt = Annotated[
     Path,
@@ -51,3 +53,18 @@ def _langs(value: str | None, recipe: TrainingRecipe) -> list[str]:
         return parse_langs(value, recipe)
     except KeyError as exc:
         raise typer.BadParameter(str(exc.args[0]), param_hint="--langs") from exc
+
+
+@data_app.command("build")
+def data_build(recipe: RecipeOpt = DEFAULT_RECIPE, langs: LangsOpt = None) -> None:
+    """Fetch, clean, language-ID, dedupe and split corpora; write the snapshot manifest."""
+    from polyglotlm.data.pipeline import build_corpora
+
+    loaded = _recipe(recipe)
+    snapshot = build_corpora(loaded, _langs(langs, loaded))
+    for lang, stats in snapshot["languages"].items():
+        typer.echo(
+            f"{lang}: read {stats['read']}, train {stats['kept']}, heldout {stats['heldout']}, "
+            f"dropped {sum(stats['dropped'].values())} {stats['dropped']}"
+        )
+    typer.echo(f"snapshot: {loaded.paths.snapshot}")

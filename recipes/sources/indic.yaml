@@ -1,0 +1,13 @@
+# Source manifest for recipes/indic-3b.yaml.
+#
+# This is a template: PolyglotLM does not bundle or mirror corpora. Put one document per line
+# (.txt) or {"text": ...} per line (.jsonl) under $DATA_BUCKET, then set each `licence` to the
+# SPDX id of the licence the data was actually published under. The pipeline refuses to run if
+# any licence is outside the allowlist in polyglotlm/data/download.py, and pinning `sha256`
+# makes the snapshot reproducible.
+sources:
+  - { name: web-hi, lang: hi, uri: "${DATA_BUCKET}/raw/hi/web.txt", licence: UNSET }
+  - { name: web-ta, lang: ta, uri: "${DATA_BUCKET}/raw/ta/web.txt", licence: UNSET }
+  - { name: web-ur, lang: ur, uri: "${DATA_BUCKET}/raw/ur/web.txt", licence: UNSET }
+  - { name: web-bn, lang: bn, uri: "${DATA_BUCKET}/raw/bn/web.txt", licence: UNSET }
+  - { name: replay-en, lang: en, uri: "${DATA_BUCKET}/raw/en/replay.txt", licence: UNSET }
