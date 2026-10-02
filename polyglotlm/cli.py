@@ -14,8 +14,10 @@ from polyglotlm.logs import configure_logging
 app = typer.Typer(no_args_is_help=True, add_completion=False, help="PolyglotLM toolkit.")
 data_app = typer.Typer(no_args_is_help=True, help="Corpus building (FR-04).")
 tokenizer_app = typer.Typer(no_args_is_help=True, help="Tokenizer extension (FR-01).")
+train_app = typer.Typer(no_args_is_help=True, help="Continued pre-training and SFT (FR-03).")
 app.add_typer(data_app, name="data")
 app.add_typer(tokenizer_app, name="tokenizer")
+app.add_typer(train_app, name="train")
 
 RecipeOpt = Annotated[
     Path,
@@ -133,3 +135,11 @@ def surgery(recipe: RecipeOpt = DEFAULT_RECIPE) -> None:
     from polyglotlm.surgery import run_surgery
 
     typer.echo(f"surgery model -> {run_surgery(_recipe(recipe))}")
+
+
+@train_app.command("cpt")
+def train_cpt(recipe: RecipeOpt = DEFAULT_RECIPE) -> None:
+    """Continued pre-training: LoRA + trainable embeddings, language mix + English replay."""
+    from polyglotlm.train.cpt import run_cpt
+
+    typer.echo(f"cpt model -> {run_cpt(_recipe(recipe))}")
