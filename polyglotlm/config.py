@@ -13,6 +13,26 @@ from polyglotlm.text import SCRIPT_RANGES
 ENGLISH = "en"
 ENGLISH_SCRIPT = "Latn"
 
+# Display names used in teacher prompts and reports; unknown codes fall back to the code itself.
+LANGUAGE_NAMES: dict[str, str] = {
+    "en": "English",
+    "hi": "Hindi",
+    "ta": "Tamil",
+    "ur": "Urdu",
+    "bn": "Bengali",
+    "mr": "Marathi",
+    "te": "Telugu",
+    "kn": "Kannada",
+    "ml": "Malayalam",
+    "gu": "Gujarati",
+    "pa": "Punjabi",
+    "or": "Odia",
+}
+
+
+def language_name(code: str) -> str:
+    return LANGUAGE_NAMES.get(code, code)
+
 
 class LanguageConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -52,6 +72,39 @@ class StageConfig(BaseModel):
     patience: int = Field(default=3, ge=1)  # evals without improvement before stopping
 
 
+DEFAULT_TOPICS: tuple[str, ...] = (
+    "farming and the monsoon",
+    "health and visiting a clinic",
+    "government schemes and documents",
+    "school and exams",
+    "banking and digital payments",
+    "local markets and prices",
+    "public transport",
+    "cooking and food at home",
+    "festivals and family events",
+    "weather and the seasons",
+)
+
+
+class DistillConfig(BaseModel):
+    """FR-05 teacher distillation settings."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    teacher: str = "claude-opus-5-5"  # a Claude model id, or `demo` for the offline demo teacher
+    effort: Literal["low", "medium", "high", "xhigh", "max"] = "high"
+    seed_path: str | None = None  # English {"instruction", "response"} JSONL
+    seed_licence: str = "UNSET"  # SPDX id; audited like corpus sources
+    n: int = Field(default=1000, ge=1)  # generated examples across all target languages
+    native_fraction: float = Field(default=0.5, ge=0.0, le=1.0)  # generated directly in-language
+    pairs_per_call: int = Field(default=5, ge=1, le=20)
+    min_chrf: float = Field(default=45.0, ge=0.0, le=100.0)  # back-translation agreement
+    min_script_ratio: float = Field(default=0.6, ge=0.0, le=1.0)
+    review_fraction: float = Field(default=0.05, ge=0.0, le=1.0)  # sent to native reviewers
+    workers: int = Field(default=8, ge=1)
+    topics: list[str] = Field(default_factory=lambda: list(DEFAULT_TOPICS))
+
+
 class TrainingRecipe(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -77,6 +130,7 @@ class TrainingRecipe(BaseModel):
     max_english_regression: float = Field(default=3.0, ge=0.0)  # points
     cpt: StageConfig = Field(default_factory=StageConfig)
     sft: StageConfig = Field(default_factory=lambda: StageConfig(max_steps=2_000, lr=5e-5))
+    distill: DistillConfig = Field(default_factory=DistillConfig)
 
     @model_validator(mode="after")
     def _consistent(self) -> TrainingRecipe:
@@ -158,6 +212,13 @@ class Paths:
     @property
     def sft_data(self) -> Path:
         return self.workdir / "sft" / "train.jsonl"
+
+    @property
+    def sft_rejected(self) -> Path:
+        return self.workdir / "sft" / "rejected.jsonl"
+
+    def review_queue(self, lang: str) -> Path:
+        return self.workdir / "sft" / "review" / f"{lang}.jsonl"
 
     def eval(self, name: str) -> Path:
         return self.workdir / "eval" / f"{name}.json"
