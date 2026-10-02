@@ -44,7 +44,8 @@ def load_block_sets(
         path = recipe.paths.corpus(lang) if split == "train" else recipe.heldout_path(lang)
         if not path.exists():
             continue
-        cache = recipe.paths.workdir / "cache" / "tokens" / split / f"{lang}.bin"
+        # One cache per tokenizer size: a memory-mapped file cannot be rewritten on Windows.
+        cache = recipe.paths.workdir / "cache" / "tokens" / split / f"{lang}-v{len(tokenizer)}.bin"
         sets[lang] = BlockSet(tokenize_corpus(tokenizer, path, cache), block_size)
     missing = [lang for lang in recipe.codes if lang not in sets]
     if missing:
