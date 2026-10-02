@@ -125,3 +125,11 @@ def tokenizer_extend(
         f"base vocab {len(base)} + {len(extended) - len(base)} new tokens "
         f"({len(selected)} selected) -> {loaded.paths.extended_tokenizer}"
     )
+
+
+@app.command()
+def surgery(recipe: RecipeOpt = DEFAULT_RECIPE) -> None:
+    """Resize embeddings + LM head to the extended vocabulary and initialise new rows (FR-02)."""
+    from polyglotlm.surgery import run_surgery
+
+    typer.echo(f"surgery model -> {run_surgery(_recipe(recipe))}")
