@@ -1,9 +1,11 @@
-# CPU smoke recipe: a tiny Llama-shaped model trained on the synthetic demo corpora.
-# Runs the whole pipeline in a few minutes on a laptop. The numbers mean nothing about quality;
-# it exists to prove the plumbing. Create the base with `poly demo init`.
+# CPU smoke recipe: a tiny Llama-shaped model trained on synthetic template corpora.
+# `poly demo run` creates every input below and runs the whole pipeline in minutes on a laptop.
+# The numbers prove the plumbing, not the method: two layers, template sentences, no native
+# review. Never quote them as results.
 base_model: artifacts/tiny-demo/base
 workdir: artifacts/tiny-demo
 sources: artifacts/tiny-demo/sources.yaml
+eval_tasks_dir: artifacts/tiny-demo/evals
 seed: 0
 
 languages:
@@ -22,23 +24,39 @@ embed_warmup_steps: 40
 embedding_init: fvt
 
 cpt:
-  max_steps: 200
+  max_steps: 300
   batch_size: 16
   block_size: 64
   lr: 2.0e-3
   embed_lr: 5.0e-3
   lr_warmup_steps: 20
-  eval_every: 40
+  eval_every: 30
   eval_blocks: 16
-  patience: 3
+  patience: 4
 
 sft:
   max_steps: 80
   batch_size: 8
-  block_size: 64
+  block_size: 96
   lr: 1.0e-3
   embed_lr: 2.0e-3
   lr_warmup_steps: 10
   eval_every: 20
   eval_blocks: 16
   patience: 3
+
+distill:
+  teacher: demo  # offline lookup teacher; use a Claude model id for real data
+  seed_path: artifacts/tiny-demo/seeds.jsonl
+  seed_licence: CC0-1.0
+  n: 240
+  review_fraction: 0.1
+  workers: 4
+
+embed:
+  parallel_dir: artifacts/tiny-demo/parallel
+  max_steps: 150
+  batch_size: 16
+  lr: 2.0e-3
+  max_length: 48
+  eval_every: 50

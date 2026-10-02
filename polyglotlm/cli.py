@@ -18,11 +18,13 @@ tokenizer_app = typer.Typer(no_args_is_help=True, help="Tokenizer extension (FR-
 train_app = typer.Typer(no_args_is_help=True, help="Continued pre-training and SFT (FR-03).")
 distill_app = typer.Typer(no_args_is_help=True, help="Teacher distillation (FR-05).")
 embed_app = typer.Typer(no_args_is_help=True, help="Multilingual sentence embeddings (FR-08).")
+demo_app = typer.Typer(no_args_is_help=True, help="CPU smoke run on synthetic data.")
 app.add_typer(data_app, name="data")
 app.add_typer(tokenizer_app, name="tokenizer")
 app.add_typer(train_app, name="train")
 app.add_typer(distill_app, name="distill")
 app.add_typer(embed_app, name="embed")
+app.add_typer(demo_app, name="demo")
 
 RecipeOpt = Annotated[
     Path,
@@ -33,6 +35,7 @@ LangsOpt = Annotated[
     typer.Option("--langs", help="Comma-separated language codes. Default: all in the recipe."),
 ]
 DEFAULT_RECIPE = Path("recipes/indic-3b.yaml")
+DEMO_RECIPE = Path("recipes/tiny-demo.yaml")
 
 
 def _recipe(path: Path) -> TrainingRecipe:
@@ -323,3 +326,22 @@ def embed_search(
     encoder = LMEncoder.load(_recipe(recipe).paths.embedder)
     for score, text in EmbeddingIndex.from_file(encoder, corpus).search(query, k):
         typer.echo(f"{score:.3f}  {text}")
+
+
+@demo_app.command("init")
+def demo_init(recipe: RecipeOpt = DEMO_RECIPE) -> None:
+    """Write synthetic corpora, seeds, eval items and a tiny pre-trained base model."""
+    from polyglotlm.demo.run import init_demo
+
+    loaded = _recipe(recipe)
+    init_demo(loaded)
+    typer.echo(f"demo inputs -> {loaded.paths.workdir}")
+
+
+@demo_app.command("run")
+def demo_run(recipe: RecipeOpt = DEMO_RECIPE) -> None:
+    """Every stage end to end on the CPU smoke recipe (a few minutes on a laptop)."""
+    from polyglotlm.demo.run import run_demo
+
+    report_path = run_demo(_recipe(recipe), on_stage=lambda name: typer.echo(f"== {name}"))
+    typer.echo(f"report -> {report_path}")
