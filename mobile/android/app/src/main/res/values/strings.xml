@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PolyglotLM</string>
+    <string name="prompt_hint">Ask in Hindi, Tamil, Urdu, Bengali or English</string>
+    <string name="generate">Generate</string>
+    <string name="stop">Stop</string>
+    <string name="loading">Loading model…</string>
+    <string name="ready">Ready (offline)</string>
+    <string name="missing_model">No model found. Push a GGUF with:\nadb push model-Q4_K_M.gguf %1$s</string>
+    <string name="speed">%1$.1f tok/s · %2$.1f chars/s · %3$d tokens</string>
+</resources>

@@ -228,3 +228,64 @@ def report(
     if fail_on_regression and english_regressed(loaded):
         typer.echo("English regression beyond budget", err=True)
         raise typer.Exit(1)
+
+
+@app.command()
+def quant(
+    recipe: RecipeOpt = DEFAULT_RECIPE,
+    q: Annotated[str, typer.Option("--q", help="llama.cpp quant type.")] = "Q4_K_M",
+    model: Annotated[
+        Path | None, typer.Option(help="Merged model dir. Default: the SFT model, else CPT.")
+    ] = None,
+    llama_cpp: Annotated[
+        Path | None, typer.Option(envvar="LLAMA_CPP_DIR", help="Built llama.cpp checkout.")
+    ] = None,
+) -> None:
+    """Convert the final model to GGUF and quantise it for on-device use (FR-07)."""
+    from polyglotlm.quant.gguf import LlamaCpp, quantise
+
+    loaded = _recipe(recipe)
+    source = model or next(
+        (p for p in (loaded.paths.model("sft"), loaded.paths.model("cpt")) if p.exists()), None
+    )
+    if source is None:
+        raise typer.BadParameter("no trained model found; pass --model", param_hint="--model")
+    name = f"{Path(loaded.workdir).name}-{source.name}"
+    out = quantise(source, loaded.paths.gguf, q, LlamaCpp.discover(llama_cpp), name)
+    typer.echo(f"gguf -> {out}")
+
+
+@app.command()
+def bench(
+    recipe: RecipeOpt = DEFAULT_RECIPE,
+    gguf: Annotated[Path | None, typer.Option(help="GGUF file to benchmark locally.")] = None,
+    from_json: Annotated[
+        Path | None, typer.Option(help="Saved `llama-bench -o json` output, e.g. from a phone.")
+    ] = None,
+    threads: Annotated[int, typer.Option(help="CPU threads for llama-bench.")] = 4,
+    llama_cpp: Annotated[Path | None, typer.Option(envvar="LLAMA_CPP_DIR")] = None,
+) -> None:
+    """Tokenizer-aware speed: generation tokens/s turned into words/s per language."""
+    from polyglotlm.quant.bench import parse_llama_bench, run_llama_bench, words_per_second
+    from polyglotlm.quant.gguf import LlamaCpp
+    from polyglotlm.tokenizer.fertility import load_report
+
+    loaded = _recipe(recipe)
+    if (gguf is None) == (from_json is None):
+        raise typer.BadParameter("pass exactly one of --gguf or --from-json")
+    if from_json is not None:
+        speed = parse_llama_bench(json.loads(from_json.read_text(encoding="utf-8")))
+    else:
+        speed = run_llama_bench(LlamaCpp.discover(llama_cpp), gguf, threads)
+    fertility_path = loaded.paths.fertility("extended")
+    if not fertility_path.exists():
+        raise typer.BadParameter("run `poly fertility --tokenizer extended` first")
+    result = {
+        "prompt_tokens_per_s": speed.prompt_tps,
+        "gen_tokens_per_s": speed.gen_tps,
+        "languages": words_per_second(speed, load_report(fertility_path)),
+    }
+    out = loaded.paths.gguf / "bench.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    typer.echo(json.dumps(result, indent=2))
