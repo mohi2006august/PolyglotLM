@@ -92,6 +92,7 @@ class _FakeMessages:
 
 
 def _claude_with(monkeypatch, response):
+    pytest.importorskip("anthropic")  # the optional `teacher` extra
     monkeypatch.setenv("TEACHER_API_KEY", "test-key-not-real")
     teacher = ClaudeTeacher("claude-opus-5-5", effort="high")
     messages = _FakeMessages(response)
