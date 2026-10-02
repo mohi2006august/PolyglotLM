@@ -23,6 +23,8 @@ Adapt an open LLM to low-resource languages (e.g. Hindi, Tamil, Urdu, Bengali) b
 | `make tokenizer` | Extend tokenizer |
 | `make cpt RECIPE=recipes/indic-3b.yaml` | Train |
 | `make eval` | Evaluate |
+| `uv run poly demo run` | End-to-end CPU smoke run on synthetic data |
+| `uv run pytest` | Test suite (CPU, tiny models) |
 
 ## Code Conventions
 

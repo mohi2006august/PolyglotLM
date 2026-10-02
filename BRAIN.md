@@ -132,6 +132,15 @@ Large Language Models: transformer networks trained on large text corpora to pre
 |---|---|---|
 | YYYY-MM-DD | Append-only vocab | Keeps compatibility with base model tooling. |
 | YYYY-MM-DD | Held-out native text for early stopping | Translated val data hid overfitting. |
+| 2026-10-02 | New tokens are non-special *added tokens*, restricted to target-script characters | Appending BPE merges would only fire after every base merge and need intermediate tokens; added tokens are matched leftmost-longest before BPE, keep base IDs untouched and can never change Latin-script tokenization. llama.cpp keeps them as USER_DEFINED tokens. Targets byte-level BPE bases (Llama-3.x). |
+| 2026-10-02 | Script-based language ID by default, fastText `lid.176` optional | Works offline with no extra wheel (fastText does not build cleanly on every platform). Recipes with two languages in one script are rejected unless `langid_model` is set. |
+| 2026-10-02 | `cpt_mix_ratio` optional; default mixture is n^0.3 temperature sampling + English replay | TECHNICAL.md specifies both; explicit ratios win when every language sets one, otherwise corpus sizes drive the mix. |
+| 2026-10-02 | Compare checkpoints with different tokenizers by bits per character | Token perplexity falls when tokens get longer even if the model got no better; bits/char measures the same text under both tokenizers. |
+| 2026-10-02 | English regression measured in benchmark points, falling back to relative bits/char change | The 3-point budget in the PRD is in points; without English task files the report still says something, and says which metric it used. |
+| 2026-10-02 | Teacher = `claude-opus-5-5` with structured output and server-side refusal fallbacks, behind a `Teacher` protocol | Typed outputs remove JSON parsing failures; the protocol keeps the provider swappable. Check the teacher provider's terms before training on its outputs. |
+| 2026-10-02 | Back-translation chrF gates translated SFT data; native generations go to review instead | Native items have no reference to compare against; a sampled native-speaker queue is the check that scales. |
+| 2026-10-02 | Embedding teacher defaults to the base LLM's mean-pooled English states | No new dependency, same tokenizer family as the student; a sentence-transformers teacher is one config line away. |
+| 2026-10-02 | Single-device trainer; FSDP/multi-GPU not wired yet | Everything else is testable on CPU; distributed training needs real hardware to verify. |
 
 ## 8. Scratchpad
 
