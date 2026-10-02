@@ -322,8 +322,9 @@ def curves_section(data: ReportData) -> str:
     colors = {lang: f"var(--series-{i + 1})" for i, lang in enumerate(langs[:MAX_LINE_SERIES])}
     parts = [
         "<h2>Training monitor</h2>",
-        '<p class="note">Held-out perplexity per language at every evaluation (log scale). '
-        "Every checkpoint is evaluated on all languages, English included.</p>",
+        '<p class="note">Held-out perplexity per language at every evaluation (log axis when '
+        "values span 10x or more). Every checkpoint is evaluated on all languages, English "
+        "included.</p>",
     ]
     for stage, records in data.curves.items():
         series = [
@@ -368,7 +369,7 @@ def samples_section(data: ReportData) -> str:
         return ""
     rows = [
         f"<tr><th scope=row>{escape(_lang(lang))}</th>"
-        f'<td class="sample">{escape(res["sample"]["prompt"])} → '
+        f'<td class="sample" dir="auto">{escape(res["sample"]["prompt"])} → '
         f"{escape(res['sample']['output'])}</td></tr>"
         for lang, res in data.evals[name]["languages"].items()
         if "sample" in res

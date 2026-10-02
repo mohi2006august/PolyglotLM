@@ -17,10 +17,14 @@ data_app = typer.Typer(no_args_is_help=True, help="Corpus building (FR-04).")
 tokenizer_app = typer.Typer(no_args_is_help=True, help="Tokenizer extension (FR-01).")
 train_app = typer.Typer(no_args_is_help=True, help="Continued pre-training and SFT (FR-03).")
 distill_app = typer.Typer(no_args_is_help=True, help="Teacher distillation (FR-05).")
+embed_app = typer.Typer(no_args_is_help=True, help="Multilingual sentence embeddings (FR-08).")
+demo_app = typer.Typer(no_args_is_help=True, help="CPU smoke run on synthetic data.")
 app.add_typer(data_app, name="data")
 app.add_typer(tokenizer_app, name="tokenizer")
 app.add_typer(train_app, name="train")
 app.add_typer(distill_app, name="distill")
+app.add_typer(embed_app, name="embed")
+app.add_typer(demo_app, name="demo")
 
 RecipeOpt = Annotated[
     Path,
@@ -31,6 +35,7 @@ LangsOpt = Annotated[
     typer.Option("--langs", help="Comma-separated language codes. Default: all in the recipe."),
 ]
 DEFAULT_RECIPE = Path("recipes/indic-3b.yaml")
+DEMO_RECIPE = Path("recipes/tiny-demo.yaml")
 
 
 def _recipe(path: Path) -> TrainingRecipe:
@@ -289,3 +294,54 @@ def bench(
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     typer.echo(json.dumps(result, indent=2))
+
+
+@embed_app.command("distill")
+def embed_distill(recipe: RecipeOpt = DEFAULT_RECIPE) -> None:
+    """Align target-language sentence embeddings with an English teacher on parallel pairs."""
+    from polyglotlm.embed.distill import run_embed_distill
+
+    out = run_embed_distill(_recipe(recipe))
+    summary = json.loads((out / "embed.json").read_text(encoding="utf-8"))
+    for lang, after in summary["after"].items():
+        before = summary["before"][lang]
+        typer.echo(
+            f"{lang}: retrieval acc@1 {before['acc_at_1']:.1f} -> {after['acc_at_1']:.1f} "
+            f"(MRR {before['mrr']:.3f} -> {after['mrr']:.3f}, {after['n']} held-out pairs)"
+        )
+    typer.echo(f"encoder -> {out}")
+
+
+@embed_app.command("search")
+def embed_search(
+    query: Annotated[str, typer.Option(help="Query in any supported language.")],
+    corpus: Annotated[Path, typer.Option(help="Text file, one passage per line.")],
+    recipe: RecipeOpt = DEFAULT_RECIPE,
+    k: Annotated[int, typer.Option(help="Results to show.")] = 5,
+) -> None:
+    """Cross-lingual search with the distilled encoder."""
+    from polyglotlm.embed.encoder import LMEncoder
+    from polyglotlm.embed.search import EmbeddingIndex
+
+    encoder = LMEncoder.load(_recipe(recipe).paths.embedder)
+    for score, text in EmbeddingIndex.from_file(encoder, corpus).search(query, k):
+        typer.echo(f"{score:.3f}  {text}")
+
+
+@demo_app.command("init")
+def demo_init(recipe: RecipeOpt = DEMO_RECIPE) -> None:
+    """Write synthetic corpora, seeds, eval items and a tiny pre-trained base model."""
+    from polyglotlm.demo.run import init_demo
+
+    loaded = _recipe(recipe)
+    init_demo(loaded)
+    typer.echo(f"demo inputs -> {loaded.paths.workdir}")
+
+
+@demo_app.command("run")
+def demo_run(recipe: RecipeOpt = DEMO_RECIPE) -> None:
+    """Every stage end to end on the CPU smoke recipe (a few minutes on a laptop)."""
+    from polyglotlm.demo.run import run_demo
+
+    report_path = run_demo(_recipe(recipe), on_stage=lambda name: typer.echo(f"== {name}"))
+    typer.echo(f"report -> {report_path}")
