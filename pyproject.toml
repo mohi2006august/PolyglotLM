@@ -1,0 +1,64 @@
+[project]
+name = "polyglotlm"
+version = "0.1.0"
+description = "Adapt an open LLM to low-resource languages: tokenizer extension, continued pre-training, teacher distillation and on-device quantisation."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "mohi2006august" }]
+dependencies = [
+    "numpy>=1.26",
+    "peft>=0.13",
+    "pydantic>=2.6",
+    "pyyaml>=6.0",
+    "safetensors>=0.4",
+    "sentencepiece>=0.2.0",
+    "structlog>=24.1",
+    "tokenizers>=0.20",
+    "torch>=2.4",
+    "transformers>=4.46",
+    "typer>=0.12",
+]
+
+[project.optional-dependencies]
+# Teacher model client for distillation (FR-05). Needs TEACHER_API_KEY.
+teacher = ["anthropic>=0.40"]
+# Experiment tracking. Needs WANDB_API_KEY.
+tracking = ["wandb>=0.17"]
+
+[project.scripts]
+poly = "polyglotlm.cli:app"
+
+[dependency-groups]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["polyglotlm"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::FutureWarning",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = ["*.md"]  # never reformat code samples in the docs
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ANN", "BLE", "S110", "RUF"]
+ignore = [
+    "ANN401", # Any is sometimes the honest type at the torch/transformers boundary
+    "RUF001", # Indic and Arabic-script literals are intentional
+    "RUF002",
+    "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ANN"]

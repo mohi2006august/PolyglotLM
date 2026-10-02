@@ -1,0 +1,44 @@
+# Llama-3.2-3B adapted to Hindi, Tamil, Urdu and Bengali.
+# Needs HF_TOKEN (gated model), a GPU node and corpora listed in recipes/sources/indic.yaml.
+base_model: meta-llama/Llama-3.2-3B
+workdir: artifacts/indic-3b
+sources: recipes/sources/indic.yaml
+seed: 0
+
+languages:
+  - { code: hi, script: Deva, new_tokens: 8000 }
+  - { code: ta, script: Taml, new_tokens: 8000 }
+  - { code: ur, script: Arab, new_tokens: 8000 }
+  - { code: bn, script: Beng, new_tokens: 8000 }
+
+# Batch mixture: target languages weighted by n_i^0.3, plus English replay.
+mix_temperature: 0.3
+english_replay: 0.15
+max_english_regression: 3.0
+
+lora_rank: 64
+train_embeddings: true
+embed_warmup_steps: 1000
+embedding_init: fvt
+
+cpt:
+  max_steps: 50000
+  batch_size: 8
+  block_size: 1024
+  lr: 1.0e-4
+  embed_lr: 5.0e-4
+  lr_warmup_steps: 500
+  eval_every: 1000
+  eval_blocks: 128
+  patience: 5
+
+sft:
+  max_steps: 5000
+  batch_size: 8
+  block_size: 1024
+  lr: 5.0e-5
+  embed_lr: 1.0e-4
+  lr_warmup_steps: 100
+  eval_every: 250
+  eval_blocks: 128
+  patience: 3

@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+
+# Secrets: only ever from environment variables
+.env
+.env.*
+!.env.example
+
+# Pipeline outputs (corpora, tokenizers, checkpoints, reports)
+artifacts/
+wandb/
+*.gguf
+*.safetensors
+*.bin
+
+# Android
+mobile/android/.gradle/
+mobile/android/**/build/
+mobile/android/local.properties
+mobile/android/app/src/main/cpp/llama.cpp/
+mobile/android/.cxx/
+mobile/android/**/.cxx/
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.lnk

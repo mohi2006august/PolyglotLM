@@ -1,0 +1,44 @@
+# CPU smoke recipe: a tiny Llama-shaped model trained on the synthetic demo corpora.
+# Runs the whole pipeline in a few minutes on a laptop. The numbers mean nothing about quality;
+# it exists to prove the plumbing. Create the base with `poly demo init`.
+base_model: artifacts/tiny-demo/base
+workdir: artifacts/tiny-demo
+sources: artifacts/tiny-demo/sources.yaml
+seed: 0
+
+languages:
+  - { code: hi, script: Deva, new_tokens: 300 }
+  - { code: ta, script: Taml, new_tokens: 300 }
+  - { code: ur, script: Arab, new_tokens: 300 }
+  - { code: bn, script: Beng, new_tokens: 300 }
+
+mix_temperature: 0.3
+english_replay: 0.15
+heldout_fraction: 0.1
+
+lora_rank: 8
+train_embeddings: true
+embed_warmup_steps: 40
+embedding_init: fvt
+
+cpt:
+  max_steps: 200
+  batch_size: 16
+  block_size: 64
+  lr: 2.0e-3
+  embed_lr: 5.0e-3
+  lr_warmup_steps: 20
+  eval_every: 40
+  eval_blocks: 16
+  patience: 3
+
+sft:
+  max_steps: 80
+  batch_size: 8
+  block_size: 64
+  lr: 1.0e-3
+  embed_lr: 2.0e-3
+  lr_warmup_steps: 10
+  eval_every: 20
+  eval_blocks: 16
+  patience: 3
