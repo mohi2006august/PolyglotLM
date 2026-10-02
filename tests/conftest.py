@@ -96,3 +96,13 @@ def extended(built) -> TrainingRecipe:
 
     extend_for_recipe(built, load_tokenizer(built.base_model), built.codes)
     return built
+
+
+@pytest.fixture(scope="session")
+def trained(extended) -> TrainingRecipe:
+    """`extended` plus a CPT model. Treat as read-only."""
+    from polyglotlm.train.cpt import run_cpt
+
+    if not (extended.paths.model("cpt") / "config.json").exists():
+        run_cpt(extended)
+    return extended

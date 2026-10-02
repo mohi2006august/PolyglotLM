@@ -365,3 +365,15 @@ def noisy_raw_corpus(lang: str, n: int, seed: int) -> list[str]:
     merged = docs + noise
     rng.shuffle(merged)
     return merged
+
+
+def demo_seed_pairs(n: int, seed: int) -> list[dict[str, str]]:
+    """English instruction/response pairs the offline demo teacher can translate.
+
+    Both sides are demo sentences, so the pairs are plumbing fixtures, not useful instructions.
+    """
+    rng = random.Random(f"seeds:{seed}")
+    english = all_sentences("en")
+    return [
+        {"instruction": a, "response": b} for a, b in (rng.sample(english, 2) for _ in range(n))
+    ]

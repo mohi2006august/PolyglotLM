@@ -21,19 +21,22 @@ def temperature_weights(sizes: dict[str, int], temperature: float) -> dict[str, 
     return {lang: weight / total for lang, weight in raw.items()}
 
 
-def mixture(recipe: TrainingRecipe, sizes: dict[str, int]) -> dict[str, float]:
+def mixture(
+    recipe: TrainingRecipe, sizes: dict[str, int], use_explicit: bool = True
+) -> dict[str, float]:
     """Sampling probability per language for one batch element. Sums to 1.
 
-    `sizes` holds the token count of every language that has training data. Explicit
-    `cpt_mix_ratio` values win over temperature sampling. English replay is dropped (and the
-    targets renormalised) only when there is no English data to replay.
+    `sizes` holds the token (or example) count of every language that has training data.
+    Explicit `cpt_mix_ratio` values win over temperature sampling when `use_explicit` is set.
+    English replay is dropped (and the targets renormalised) only when there is no English data
+    to replay.
     """
     targets = {lang: n for lang, n in sizes.items() if lang != ENGLISH}
     replay = recipe.english_replay if ENGLISH in sizes else 0.0
     explicit = {
         lang: recipe.language(lang).cpt_mix_ratio
         for lang in targets
-        if recipe.language(lang).cpt_mix_ratio is not None
+        if use_explicit and recipe.language(lang).cpt_mix_ratio is not None
     }
     if explicit:
         total = sum(explicit.values())

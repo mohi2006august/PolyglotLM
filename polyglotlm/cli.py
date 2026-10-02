@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Annotated
 
@@ -15,9 +16,11 @@ app = typer.Typer(no_args_is_help=True, add_completion=False, help="PolyglotLM t
 data_app = typer.Typer(no_args_is_help=True, help="Corpus building (FR-04).")
 tokenizer_app = typer.Typer(no_args_is_help=True, help="Tokenizer extension (FR-01).")
 train_app = typer.Typer(no_args_is_help=True, help="Continued pre-training and SFT (FR-03).")
+distill_app = typer.Typer(no_args_is_help=True, help="Teacher distillation (FR-05).")
 app.add_typer(data_app, name="data")
 app.add_typer(tokenizer_app, name="tokenizer")
 app.add_typer(train_app, name="train")
+app.add_typer(distill_app, name="distill")
 
 RecipeOpt = Annotated[
     Path,
@@ -143,3 +146,39 @@ def train_cpt(recipe: RecipeOpt = DEFAULT_RECIPE) -> None:
     from polyglotlm.train.cpt import run_cpt
 
     typer.echo(f"cpt model -> {run_cpt(_recipe(recipe))}")
+
+
+@distill_app.command("sft")
+def distill_sft_cmd(
+    recipe: RecipeOpt = DEFAULT_RECIPE,
+    teacher: Annotated[
+        str | None, typer.Option(help="Claude model id, or `demo`. Default: from the recipe.")
+    ] = None,
+    n: Annotated[int | None, typer.Option(help="Examples to generate across languages.")] = None,
+    langs: LangsOpt = None,
+) -> None:
+    """Teacher-translated and natively generated instruction data with back-translation QA."""
+    from polyglotlm.distill.teacher import build_teacher
+    from polyglotlm.distill.teacher_generate import distill_sft, summary
+
+    loaded = _recipe(recipe)
+    chosen = build_teacher(teacher or loaded.distill.teacher, loaded.distill.effort)
+    report = distill_sft(loaded, chosen, n, _langs(langs, loaded) if langs else None)
+    typer.echo(json.dumps(summary(report), ensure_ascii=False, indent=2))
+    typer.echo(f"sft data -> {loaded.paths.sft_data}")
+
+
+@distill_app.command("review")
+def distill_review(recipe: RecipeOpt = DEFAULT_RECIPE) -> None:
+    """Fold native-speaker review decisions (sft/review/*.jsonl) back into the SFT set."""
+    from polyglotlm.distill.review import apply_reviews
+
+    typer.echo(json.dumps(dict(apply_reviews(_recipe(recipe)))))
+
+
+@train_app.command("sft")
+def train_sft(recipe: RecipeOpt = DEFAULT_RECIPE) -> None:
+    """Instruction tuning on the distilled set, early-stopped on held-out native text."""
+    from polyglotlm.train.sft import run_sft
+
+    typer.echo(f"sft model -> {run_sft(_recipe(recipe))}")
