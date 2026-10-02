@@ -66,3 +66,33 @@ def recipe(tmp_path: Path) -> TrainingRecipe:
     """A recipe over freshly written noisy raw corpora (nothing built yet)."""
     write_demo_sources(tmp_path)
     return make_recipe(tmp_path)
+
+
+@pytest.fixture(scope="session")
+def built(tmp_path_factory) -> TrainingRecipe:
+    """Corpora built and a tiny pre-trained base model saved. Treat as read-only."""
+    from polyglotlm.data.pipeline import build_corpora
+    from polyglotlm.demo.base import create_base
+    from polyglotlm.demo.corpus import sample_documents
+
+    root = tmp_path_factory.mktemp("built")
+    write_demo_sources(root)
+    recipe = make_recipe(root)
+    build_corpora(recipe, recipe.codes)
+    create_base(
+        Path(recipe.base_model),
+        english_docs=sample_documents("en", 300, seed=11),
+        target_docs=[doc for lang in TARGETS for doc in sample_documents(lang, 8, seed=11)],
+        pretrain_steps=60,
+    )
+    return recipe
+
+
+@pytest.fixture(scope="session")
+def extended(built) -> TrainingRecipe:
+    """`built` plus the extended tokenizer. Treat as read-only."""
+    from polyglotlm.tokenizer import load_tokenizer
+    from polyglotlm.tokenizer.merge_vocab import extend_for_recipe
+
+    extend_for_recipe(built, load_tokenizer(built.base_model), built.codes)
+    return built

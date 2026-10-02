@@ -13,7 +13,9 @@ from polyglotlm.logs import configure_logging
 
 app = typer.Typer(no_args_is_help=True, add_completion=False, help="PolyglotLM toolkit.")
 data_app = typer.Typer(no_args_is_help=True, help="Corpus building (FR-04).")
+tokenizer_app = typer.Typer(no_args_is_help=True, help="Tokenizer extension (FR-01).")
 app.add_typer(data_app, name="data")
+app.add_typer(tokenizer_app, name="tokenizer")
 
 RecipeOpt = Annotated[
     Path,
@@ -68,3 +70,58 @@ def data_build(recipe: RecipeOpt = DEFAULT_RECIPE, langs: LangsOpt = None) -> No
             f"dropped {sum(stats['dropped'].values())} {stats['dropped']}"
         )
     typer.echo(f"snapshot: {loaded.paths.snapshot}")
+
+
+@app.command()
+def fertility(
+    recipe: RecipeOpt = DEFAULT_RECIPE,
+    tokenizer: Annotated[
+        str, typer.Option(help="`base`, `extended`, a local path or a Hub id.")
+    ] = "base",
+    langs: LangsOpt = None,
+    max_docs: Annotated[
+        int | None, typer.Option(help="Cap held-out documents per language.")
+    ] = None,
+) -> None:
+    """Token tax report: tokens per word on held-out text, before and after extension."""
+    from polyglotlm.tokenizer import resolve_tokenizer
+    from polyglotlm.tokenizer.fertility import (
+        fertility_report,
+        load_report,
+        render_table,
+        save_report,
+    )
+
+    loaded = _recipe(recipe)
+    codes = _langs(langs, loaded) if langs else loaded.all_codes
+    report = fertility_report(resolve_tokenizer(tokenizer, loaded), loaded, codes, max_docs)
+    name = tokenizer if tokenizer in ("base", "extended") else "custom"
+    save_report(report, loaded.paths.fertility(name))
+    base_path = loaded.paths.fertility("base")
+    if name == "extended" and base_path.exists():
+        typer.echo(render_table(load_report(base_path), report))
+    else:
+        typer.echo(render_table(report))
+
+
+@tokenizer_app.command("extend")
+def tokenizer_extend(
+    recipe: RecipeOpt = DEFAULT_RECIPE,
+    lang: Annotated[
+        str | None, typer.Option(help="Comma-separated languages. Default: all in the recipe.")
+    ] = None,
+    new_tokens: Annotated[
+        int | None, typer.Option(help="Override `new_tokens` for the selected languages.")
+    ] = None,
+) -> None:
+    """Train candidate subwords, keep the top-N by tokens saved, append them to the base vocab."""
+    from polyglotlm.tokenizer import load_tokenizer
+    from polyglotlm.tokenizer.merge_vocab import extend_for_recipe
+
+    loaded = _recipe(recipe)
+    base = load_tokenizer(loaded.base_model)
+    extended, selected = extend_for_recipe(loaded, base, _langs(lang, loaded), new_tokens)
+    typer.echo(
+        f"base vocab {len(base)} + {len(extended) - len(base)} new tokens "
+        f"({len(selected)} selected) -> {loaded.paths.extended_tokenizer}"
+    )
