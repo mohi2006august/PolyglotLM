@@ -377,3 +377,32 @@ def demo_seed_pairs(n: int, seed: int) -> list[dict[str, str]]:
     return [
         {"instruction": a, "response": b} for a, b in (rng.sample(english, 2) for _ in range(n))
     ]
+
+
+def demo_eval_items(lang: str, n: int, seed: int) -> list[dict[str, object]]:
+    """Word-order acceptability items: pick the real sentence among three shuffled variants.
+
+    A language model that has learned the language prefers the grammatical order; one that has
+    not is near chance (25%). Synthetic smoke-test items, not a benchmark.
+    """
+    rng = random.Random(f"eval:{seed}:{lang}")
+    items = []
+    for i, sentence in enumerate(rng.sample(all_sentences(lang), n)):
+        words = sentence.split()
+        variants: set[str] = set()
+        while len(variants) < 3:
+            shuffled = rng.sample(words, len(words))
+            if shuffled != words:
+                variants.add(" ".join(shuffled))
+        choices = [sentence, *sorted(variants)]
+        rng.shuffle(choices)
+        items.append(
+            {
+                "type": "mc",
+                "id": f"{lang}-{i}",
+                "prompt": "",
+                "choices": choices,
+                "answer": choices.index(sentence),
+            }
+        )
+    return items
